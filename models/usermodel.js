@@ -1,12 +1,10 @@
 const mongoose=require('mongoose');
 
 let userschema=new mongoose.Schema({
-    username:{type:String,required:true,unique:true},
+    name:{type:String,required:true,trim:true},
+    email:{type:String,required:true,unique:true,lowercase:true,trim:true},
     password:{type:String,required:true},
-    email:{type:String,required:true,unique:true},
-    role:{type:String,enum:["seller","buyer"],required:true}
+    role:{type:String,enum:["seller","buyer"],default:"buyer"}
 },{timestamps:true})
 
-let users=mongoose.model('users',userschema);
-
-module.exports=users;
+module.exports=mongoose.model('users',userschema);

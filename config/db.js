@@ -7,7 +7,8 @@ async function connection(){
         console.log('db connected')
     }
     catch(error){
-        if(error) throw error;
+        console.error('DB connection failed:', error.message)
+        process.exit(1)
     }
 }
 module.exports=connection

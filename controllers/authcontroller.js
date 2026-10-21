@@ -2,48 +2,44 @@ let users=require('../models/usermodel')
 const bcrypt=require('bcrypt')
 const jwt=require('jsonwebtoken')
 const mail=require('../utils/gmail')
-const dotenv=require('dotenv').config();
+require('dotenv').config();
+
+const sign=(user)=>jwt.sign({id:user._id,email:user.email},process.env.SECRETKEY,{expiresIn:'1hr'})
 
 exports.register=async (req,res)=>{
   try {
-    const {username,password,email,role}=req.body
-    //1)check the fields
-    if(!username || !password || !email || !role) 
-      return res.json({"msg":"missing fields"})
-   //2)check if user already exits or not
-   let checkuser=await users.findOne({username})
-   if(checkuser) return res.json({msg:"user already exist"})
-   //3)store users data in db
-   let hashedpassword=await bcrypt.hash(password,10)
+    const {name,email,password}=req.body
+    if(!name || !email || !password) return res.status(400).json({msg:"name, email and password are required"})
+    if(await users.findOne({email:email.toLowerCase().trim()})) return res.status(409).json({msg:"user already exists"})
 
-  await users.create({username,password:hashedpassword,email,role})
-  //generate a token and send token to client
-  let payload={username:username,email:email}
-  let token=await jwt.sign(payload,process.env.SECRETKEY,{expiresIn:'1hr'})
-  res.json({"msg":"registration succesfull",token})
-mail(email,username);
+    const user=await users.create({name,email,password:await bcrypt.hash(password,10)})
+    res.status(201).json({msg:"registration successful",token:sign(user)})
+    mail(email,name).catch(()=>{})
   } catch (error) {
-    res.json({"msg":error.message})
+    res.status(500).json({msg:error.message})
   }
 }
 
 exports.login=async (req,res)=>{
- try {
-     const  {username,password}=req.body
-     if(!username || !password) 
-      return res.json({"msg":"missing fields"})
-   
-    let userdetails=await users.findOne({username})
-    if(!userdetails) return res.json({"msg":"invalid credentials"})
-     let checkpassword=await bcrypt.compare(password,userdetails.password)
-    if(!checkpassword) return res.json({"msg":"invalid credeentials"})
-     
-      //verify the token
-      let token=req.headers.authorization.split(' ')[1]
-      let isverified=await jwt.verify(token,process.env.SECRETKEY)
-       if(!isverified) return res.json({"msg":"invalid token"})
-     res.json({"msg":"login successful"})
- } catch (error) {
-  res.json({"msg":error.message})
- }
+  try {
+    const {email,password}=req.body
+    if(!email || !password) return res.status(400).json({msg:"email and password are required"})
+
+    const user=await users.findOne({email:email.toLowerCase().trim()})
+    if(!user || !await bcrypt.compare(password,user.password))
+      return res.status(401).json({msg:"invalid email or password"})
+    res.json({msg:"login successful",token:sign(user)})
+  } catch (error) {
+    res.status(500).json({msg:error.message})
+  }
+}
+
+exports.me=async (req,res)=>{
+  try {
+    const user=await users.findById(req.user.id).select('-password')
+    if(!user) return res.status(404).json({msg:"user not found"})
+    res.json(user)
+  } catch (error) {
+    res.status(500).json({msg:error.message})
+  }
 }

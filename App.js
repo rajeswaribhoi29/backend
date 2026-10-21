@@ -263,6 +263,7 @@ let connection=require('./config/db')
 const limiter=require('./middlewares/ratelimit')
 let productroutes=require('./routes/productroutes')
 let authroutes=require('./routes/authroutes')
+let orderroutes=require('./routes/orderroutes')
 const app=express();
 const port=process.env.PORT;
 
@@ -271,12 +272,17 @@ app.use(express.json())
 app.use(cors())
 app.use(limiter)
 
+app.get("/", (req, res) => {
+    res.json({ msg: "welcome to ecom backend" })
+})
+
 app.use('/products',productroutes)
 app.use('/auth',authroutes)
+app.use('/orders',orderroutes)
 
 
 app.listen(port,()=>{
   console.log(`the server is running on ${port} `)
   connection();
-  
+
 })
